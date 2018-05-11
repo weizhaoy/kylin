@@ -569,7 +569,8 @@
   "engine_type": 4,
   "storage_type": 2,
   "override_kylin_properties": {
-    "kylin.cube.algorithm": "LAYER"
+    "kylin.cube.algorithm": "LAYER",
+    "kylin.cube.size-estimate-ratio" : 0.01
   },
   "partition_date_start": 0
 }
