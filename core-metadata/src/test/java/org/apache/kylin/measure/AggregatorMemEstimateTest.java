@@ -32,6 +32,7 @@ import org.apache.kylin.measure.basic.DoubleSumAggregator;
 import org.apache.kylin.measure.basic.LongMaxAggregator;
 import org.apache.kylin.measure.basic.LongMinAggregator;
 import org.apache.kylin.measure.basic.LongSumAggregator;
+import org.apache.kylin.measure.basic.StringMaxAggregator;
 import org.apache.kylin.measure.bitmap.BitmapAggregator;
 import org.apache.kylin.measure.bitmap.BitmapCounter;
 import org.apache.kylin.measure.bitmap.RoaringBitmapCounterFactory;
@@ -84,10 +85,16 @@ public class AggregatorMemEstimateTest extends LocalFileMetadataTestCase {
         decimalMax.aggregate(decimal);
         decimalSum.aggregate(decimal);
 
+        // String
+        StringMaxAggregator stringMax = new StringMaxAggregator();
+        String string = new String("abcdefghijklmnopqrstuvwxyz");
+        stringMax.aggregate(string);
+
         return Lists.newArrayList(
                 longMin, longMax, longSum,
                 doubleMin, doubleMax, doubleSum,
                 decimalMin, decimalMax, decimalSum
+                , stringMax
         );
     }
 
