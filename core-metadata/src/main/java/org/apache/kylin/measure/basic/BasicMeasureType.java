@@ -75,7 +75,9 @@ public class BasicMeasureType extends MeasureType {
             }
         } else if (funcName.equals(FunctionDesc.FUNC_MAX) || funcName.equals(FunctionDesc.FUNC_MIN)) {
             if (rtype.isNumberFamily() == false) {
-                throw new IllegalArgumentException("Return type for function " + funcName + " must be one of " + DataType.NUMBER_FAMILY);
+                if (rtype.isStringFamily() == false)
+                throw new IllegalArgumentException("Return type for function " + funcName + " must be one of " + DataType.NUMBER_FAMILY
+                + DataType.STRING_FAMILY);
             }
         } else {
             KylinConfig config = KylinConfig.getInstanceFromEnv();
@@ -92,8 +94,10 @@ public class BasicMeasureType extends MeasureType {
             return new BigDecimalIngester();
         else if (dataType.isNumberFamily())
             return new DoubleIngester();
+        else if (dataType.isStringFamily())
+            return new StringIngester();
         else
-            throw new IllegalArgumentException("No ingester for aggregation type " + dataType);
+            throw new IllegalArgumentException("No Ingester for aggregation type " + dataType);
     }
 
     @Override
@@ -112,6 +116,8 @@ public class BasicMeasureType extends MeasureType {
                 return new LongMaxAggregator();
             else if (dataType.isNumberFamily())
                 return new DoubleMaxAggregator();
+            else if (dataType.isStringFamily())
+                return new StringMaxAggregator();
         } else if (isMin()) {
             if (dataType.isDecimal())
                 return new BigDecimalMinAggregator();
@@ -119,6 +125,8 @@ public class BasicMeasureType extends MeasureType {
                 return new LongMinAggregator();
             else if (dataType.isNumberFamily())
                 return new DoubleMinAggregator();
+            else if (dataType.isStringFamily())
+                return new StringMinAggregator();
         }
         throw new IllegalArgumentException("No aggregator for func '" + funcName + "' and return type '" + dataType + "'");
     }

@@ -127,7 +127,7 @@ abstract public class MeasureTypeFactory<T> {
                 }
             }
         } catch (KylinConfigCannotInitException e) {
-            logger.warn("Will not add custome MeasureTypeFactory as KYLIN_CONF nor KYLIN_HOME is set");
+            logger.warn("Will not add custom MeasureTypeFactory as neither KYLIN_CONF nor KYLIN_HOME is set");
         }
 
         // register factories & data type serializers

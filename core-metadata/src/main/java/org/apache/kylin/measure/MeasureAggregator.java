@@ -61,6 +61,11 @@ abstract public class MeasureAggregator<V> implements Serializable {
         */
     }
 
+    public static int guessStringMemBytes() {
+        // depends on String length, therefore here just giving a estimated number
+        return 120;
+    }
+
     // ============================================================================
 
     @SuppressWarnings("rawtypes")
