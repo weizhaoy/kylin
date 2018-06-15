@@ -23,37 +23,36 @@ import org.apache.kylin.measure.MeasureAggregator;
 /**
  */
 @SuppressWarnings("serial")
-public class StringMaxAggregator extends MeasureAggregator<String> {
+public class StringMinAggregator extends MeasureAggregator<String> {
 
-    String max = null;
+    String min = null;
 
     @Override
     public void reset() {
-        max = null;
+        min = null;
     }
 
     @Override
     public void aggregate(String value) {
-        if (max == null)
-            max = value;
-        else if (max.compareTo(value) < 0)
-            max = value;
+        if (min == null)
+            min = value;
+        else if (min.compareTo(value) < 0)
+            min = value;
     }
 
     @Override
     public String aggregate(String value1, String value2) {
-        return value1.compareTo(value2) > 0 ? value1 : value2;
+        return value1.compareTo(value2) > 0 ? value2 : value1;
     }
 
     @Override
     public String getState() {
-        return max;
+        return min;
     }
 
     @Override
     public int getMemBytesEstimate() {
         return guessStringMemBytes();
     }
-
+    
 }
-

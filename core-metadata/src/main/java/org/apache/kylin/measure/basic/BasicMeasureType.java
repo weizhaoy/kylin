@@ -124,6 +124,8 @@ public class BasicMeasureType extends MeasureType {
                 return new LongMinAggregator();
             else if (dataType.isNumberFamily())
                 return new DoubleMinAggregator();
+            else if (dataType.isStringFamily())
+                return new StringMinAggregator();
         }
         throw new IllegalArgumentException("No aggregator for func '" + funcName + "' and return type '" + dataType + "'");
     }

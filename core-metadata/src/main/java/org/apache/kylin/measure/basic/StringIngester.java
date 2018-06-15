@@ -18,12 +18,12 @@
 
 package org.apache.kylin.measure.basic;
 
-        import java.util.Map;
+import java.util.Map;
 
-        import org.apache.kylin.common.util.Dictionary;
-        import org.apache.kylin.measure.MeasureIngester;
-        import org.apache.kylin.metadata.model.MeasureDesc;
-        import org.apache.kylin.metadata.model.TblColRef;
+import org.apache.kylin.common.util.Dictionary;
+import org.apache.kylin.measure.MeasureIngester;
+import org.apache.kylin.metadata.model.MeasureDesc;
+import org.apache.kylin.metadata.model.TblColRef;
 
 public class StringIngester extends MeasureIngester<String> {
 
