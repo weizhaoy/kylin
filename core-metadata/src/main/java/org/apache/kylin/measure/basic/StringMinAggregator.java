@@ -36,7 +36,7 @@ public class StringMinAggregator extends MeasureAggregator<String> {
     public void aggregate(String value) {
         if (min == null)
             min = value;
-        else if (min.compareTo(value) < 0)
+        else if (min.compareTo(value) > 0)
             min = value;
     }
 

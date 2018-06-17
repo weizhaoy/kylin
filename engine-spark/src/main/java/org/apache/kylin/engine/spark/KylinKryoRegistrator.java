@@ -217,6 +217,7 @@ public class KylinKryoRegistrator implements KryoRegistrator {
         kyroClasses.add(org.apache.kylin.measure.basic.LongSumAggregator.class);
         kyroClasses.add(org.apache.kylin.measure.basic.StringIngester.class);
         kyroClasses.add(org.apache.kylin.measure.basic.StringMaxAggregator.class);
+        kyroClasses.add(org.apache.kylin.measure.basic.StringMinAggregator.class);
         kyroClasses.add(org.apache.kylin.measure.bitmap.BitmapAggregator.class);
         kyroClasses.add(org.apache.kylin.measure.bitmap.BitmapMeasureType.class);
         kyroClasses.add(org.apache.kylin.measure.bitmap.BitmapSerializer.class);
