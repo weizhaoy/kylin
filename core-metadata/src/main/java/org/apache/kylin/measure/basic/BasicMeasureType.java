@@ -76,7 +76,8 @@ public class BasicMeasureType extends MeasureType {
         } else if (funcName.equals(FunctionDesc.FUNC_MAX) || funcName.equals(FunctionDesc.FUNC_MIN)) {
             if (rtype.isNumberFamily() == false) {
                 if (rtype.isStringFamily() == false)
-                throw new IllegalArgumentException("Return type for function " + funcName + " must be one of " + DataType.NUMBER_FAMILY);
+                throw new IllegalArgumentException("Return type for function " + funcName + " must be one of " + DataType.NUMBER_FAMILY
+                + DataType.STRING_FAMILY);
             }
         } else {
             KylinConfig config = KylinConfig.getInstanceFromEnv();
@@ -96,7 +97,7 @@ public class BasicMeasureType extends MeasureType {
         else if (dataType.isStringFamily())
             return new StringIngester();
         else
-            throw new IllegalArgumentException("XimanSay: No Ingester for aggregation type " + dataType);
+            throw new IllegalArgumentException("No Ingester for aggregation type " + dataType);
     }
 
     @Override
