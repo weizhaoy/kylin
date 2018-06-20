@@ -236,12 +236,13 @@ public class QueryController extends BasicController {
         }
 
         // get all measures in the table, may create a method for this
-        Set<MeasureDesc> measuresInTable = new HashSet<>();
+//        Set<MeasureDesc> measuresInTable = new HashSet<>();
         Map<String, Set<MeasureDesc>> columnMeasureMap = new HashMap<>();
+        Set<String> measureStrSet = new HashSet<>(); // for find unique measures
         ParameterDesc parameterDesc;
         String value;
         String table;
-        String column;
+//        String column;
         for (MeasureDesc measureDesc : measuresInProject) {
             parameterDesc = measureDesc.getFunction().getParameter();
             if (parameterDesc.getType().equalsIgnoreCase("column")) {
@@ -249,12 +250,13 @@ public class QueryController extends BasicController {
                 value = parameterDesc.getValue();
                 table = value.substring(0, value.indexOf('.'));
                 logger.info("table name for measure {}: {}", measureDesc.getName(), table);
-                if (tableName.equalsIgnoreCase(table)) {
-                    measuresInTable.add(measureDesc);
+                if (tableName.equalsIgnoreCase(table) && !measureStrSet.contains(measureDesc.toString())) {
+//                    measuresInTable.add(measureDesc);
+                    measureStrSet.add(measureDesc.toString());
                     if (!columnMeasureMap.containsKey(value)) {
                         columnMeasureMap.put(value, new HashSet<>());
                     }
-                    logger.info("Measure: {}, \nDependentMeasureRef: {}, ", measureDesc.toString(), measureDesc.getDependentMeasureRef());
+                    logger.info("Measure: {}, \nDependentMeasureRef: {}, hashcode: {}", measureDesc.toString(), measureDesc.getDependentMeasureRef(), measureDesc.hashCode());
                     columnMeasureMap.get(value).add(measureDesc);
                 }
             }
