@@ -40,8 +40,6 @@ import org.apache.kylin.common.debug.BackdoorToggles;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.metadata.model.MeasureDesc;
 import org.apache.kylin.metadata.model.ParameterDesc;
-import org.apache.kylin.metadata.querymeta.ColumnMeta;
-import org.apache.kylin.metadata.querymeta.ColumnMetaWithType;
 import org.apache.kylin.metadata.querymeta.SelectedColumnMeta;
 import org.apache.kylin.metadata.querymeta.TableMeta;
 import org.apache.kylin.metadata.querymeta.TableMetaWithType;
@@ -205,7 +203,7 @@ public class QueryController extends BasicController {
      */
     @RequestMapping(value = "/tables_and_columns/meta/{projectName}/{schemaName}/{tableName:.+}", method = { RequestMethod.GET }, produces = { "application/json" })
     @ResponseBody
-    private Map<String, Set<MeasureDesc>> getTableMetadata(@PathVariable String projectName, @PathVariable String schemaName, @PathVariable String tableName) {
+    private Map<String, Object> getTableMetadata(@PathVariable String projectName, @PathVariable String schemaName, @PathVariable String tableName) {
         Map<String, Object> result = new HashMap<>();
         TableMetaWithType matchedTable = null;
         try{
@@ -256,32 +254,35 @@ public class QueryController extends BasicController {
                     if (!columnMeasureMap.containsKey(value)) {
                         columnMeasureMap.put(value, new HashSet<>());
                     }
+                    logger.info("Measure: {}, \nDependentMeasureRef: {}, ", measureDesc.toString(), measureDesc.getDependentMeasureRef());
                     columnMeasureMap.get(value).add(measureDesc);
                 }
             }
         }
 
+        result.put("measures", columnMeasureMap);
+        result.put("table_meta", matchedTable);
 
         // get dimensions and measures
-        for (ColumnMeta columnMeta : matchedTable.getColumns()) {
-            if (columnMeta instanceof ColumnMetaWithType) {
-                ColumnMetaWithType columnMetaWithType = (ColumnMetaWithType) columnMeta;
-                if (columnMetaWithType.getTYPE().contains(ColumnMetaWithType.columnTypeEnum.MEASURE)) {
-                    // find its measure type
-                    String colName = columnMetaWithType.getCOLUMN_NAME();
-                    Set<MeasureDesc> measuresForCol = new HashSet<>();
-                    for (MeasureDesc measureDesc : measuresInTable) {
-                        value = measureDesc.getFunction().getParameter().getValue();
-                        column = value.substring(value.indexOf('.') + 1);
-                        logger.info("column name for measure {}: {}", measureDesc.getName(), column);
-                        if (colName.equalsIgnoreCase(column)) {
-                            measuresForCol.add(measureDesc);
-                        }
-                    }
-                }
-            }
-        }
-        return columnMeasureMap;
+//        for (ColumnMeta columnMeta : matchedTable.getColumns()) {
+//            if (columnMeta instanceof ColumnMetaWithType) {
+//                ColumnMetaWithType columnMetaWithType = (ColumnMetaWithType) columnMeta;
+//                if (columnMetaWithType.getTYPE().contains(ColumnMetaWithType.columnTypeEnum.MEASURE)) {
+//                    // find its measure type
+//                    String colName = columnMetaWithType.getCOLUMN_NAME();
+//                    Set<MeasureDesc> measuresForCol = new HashSet<>();
+//                    for (MeasureDesc measureDesc : measuresInTable) {
+//                        value = measureDesc.getFunction().getParameter().getValue();
+//                        column = value.substring(value.indexOf('.') + 1);
+//                        logger.info("column name for measure {}: {}", measureDesc.getName(), column);
+//                        if (colName.equalsIgnoreCase(column)) {
+//                            measuresForCol.add(measureDesc);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+        return result;
     }
 
 
