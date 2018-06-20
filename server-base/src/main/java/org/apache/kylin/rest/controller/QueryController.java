@@ -253,7 +253,10 @@ public class QueryController extends BasicController {
                 logger.info("table name for measure {}: {}", measureDesc.getName(), table);
                 if (tableName.equalsIgnoreCase(table)) {
                     measuresInTable.add(measureDesc);
-                    columnMeasureMap.getOrDefault(value, new HashSet<>()).add(measureDesc);
+                    if (!columnMeasureMap.containsKey(value)) {
+                        columnMeasureMap.put(value, new HashSet<>());
+                    }
+                    columnMeasureMap.get(value).add(measureDesc);
                 }
             }
         }
