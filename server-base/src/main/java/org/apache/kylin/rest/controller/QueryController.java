@@ -36,6 +36,7 @@ import org.apache.kylin.common.QueryContextFacade;
 import org.apache.kylin.common.debug.BackdoorToggles;
 import org.apache.kylin.metadata.querymeta.SelectedColumnMeta;
 import org.apache.kylin.metadata.querymeta.TableMeta;
+import org.apache.kylin.metadata.querymeta.TableMetaWithType;
 import org.apache.kylin.rest.exception.ForbiddenException;
 import org.apache.kylin.rest.exception.InternalErrorException;
 import org.apache.kylin.rest.model.Query;
@@ -171,6 +172,16 @@ public class QueryController extends BasicController {
         try {
             return queryService.getMetadata(metaRequest.getProject());
         } catch (SQLException e) {
+            throw new InternalErrorException(e.getLocalizedMessage(), e);
+        }
+    }
+
+    @RequestMapping(value = "/tables_and_columns_2", method = RequestMethod.GET, produces = { "application/json" })
+    @ResponseBody
+    public List<TableMetaWithType> getMetadata2(MetaRequest metaRequest) {
+        try {
+            return queryService.getMetadataV2(metaRequest.getProject());
+        } catch (SQLException | IOException e) {
             throw new InternalErrorException(e.getLocalizedMessage(), e);
         }
     }
