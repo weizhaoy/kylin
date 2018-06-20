@@ -876,6 +876,7 @@ public class QueryService extends BasicService {
                     String columnIdentity = (dataModelDesc.findTable(measure.substring(0, measure.indexOf(".")))
                             .getTableIdentity() + measure.substring(measure.indexOf("."))).replace('.', '#');
                     if (columnMap.containsKey(columnIdentity)) {
+                        logger.info("Measure: " + measure + " for column: " + columnIdentity);
                         columnMap.get(columnIdentity).getTYPE().add(ColumnMetaWithType.columnTypeEnum.MEASURE);
                     } else {
                         // throw new BadRequestException(msg.getCOLUMN_META_INCONSISTENT());
