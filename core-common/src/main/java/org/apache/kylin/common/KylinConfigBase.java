@@ -414,6 +414,19 @@ abstract public class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.snapshot.max-mb", "300"));
     }
 
+    public int getExtTableSnapshotShardingMB() {
+        return Integer.parseInt(getOptional("kylin.snapshot.ext.shard-mb", "500"));
+    }
+
+    public String getExtTableSnapshotLocalCachePath() {
+        return getOptional("kylin.snapshot.ext.local.cache.path", "lookup_cache");
+    }
+
+    public double getExtTableSnapshotLocalCacheMaxSizeGB() {
+        return Double.parseDouble(getOptional("kylin.snapshot.ext.local.cache.max-size-gb", "200"));
+    }
+
+
     // ============================================================================
     // CUBE
     // ============================================================================
@@ -469,6 +482,10 @@ abstract public class KylinConfigBase implements Serializable {
 
     public int getCubeRowkeyMaxSize() {
         return Integer.parseInt(getOptional("kylin.cube.rowkey.max-size", "63"));
+    }
+
+    public int getDimensionEncodingMaxLength() {
+        return Integer.parseInt(getOptional("kylin.metadata.dimension-encoding-max-length", "256"));
     }
 
     public int getMaxBuildingSegments() {
@@ -852,6 +869,10 @@ abstract public class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.source.jdbc.sqoop-mapper-num", "4"));
     }
 
+    public Map<String, String> getSqoopConfigOverride() {
+        return getPropertiesByPrefix("kylin.source.jdbc.sqoop-config-override.");
+    }
+    
     public String getJdbcSourceFieldDelimiter() {
         return getOptional("kylin.source.jdbc.field-delimiter", "|");
     }
@@ -1183,6 +1204,10 @@ abstract public class KylinConfigBase implements Serializable {
         return Integer.valueOf(getOptional("kylin.engine.spark.max-partition", "5000"));
     }
 
+    public String getSparkStorageLevel() {
+        return getOptional("kylin.engine.spark.storage-level", "MEMORY_AND_DISK_SER");
+    }
+
     public boolean isSparkSanityCheckEnabled() {
         return Boolean.parseBoolean(getOptional("kylin.engine.spark.sanity-check-enabled", "false"));
     }
@@ -1225,6 +1250,12 @@ abstract public class KylinConfigBase implements Serializable {
             return Lists.newArrayList();
         }
         return Lists.newArrayList(rules.split(","));
+    }
+
+    // check KYLIN-3358, need deploy coprocessor if enabled
+    // finally should be deprecated
+    public boolean isDynamicColumnEnabled() {
+        return Boolean.valueOf(getOptional("kylin.query.enable-dynamic-column", "false"));
     }
 
     //check KYLIN-1684, in most cases keep the default value
@@ -1600,7 +1631,7 @@ abstract public class KylinConfigBase implements Serializable {
     }
 
     public String getKylinMetricsSubjectSuffix() {
-        return getOptional("kylin.core.metric.subject-suffix", getDeployEnv());
+        return getOptional("kylin.metric.subject-suffix", getDeployEnv());
     }
 
     public String getKylinMetricsSubjectJob() {

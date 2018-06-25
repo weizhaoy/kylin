@@ -29,7 +29,9 @@ import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.HBaseMetadataTestCase;
 import org.apache.kylin.cube.CubeInstance;
 import org.apache.kylin.cube.CubeManager;
+import org.apache.kylin.metadata.expression.TupleExpression;
 import org.apache.kylin.metadata.filter.TupleFilter;
+import org.apache.kylin.metadata.model.DynamicFunctionDesc;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.MeasureDesc;
 import org.apache.kylin.metadata.model.TblColRef;
@@ -139,7 +141,11 @@ public class ITStorageTest extends HBaseMetadataTestCase {
         try {
             SQLDigest sqlDigest = new SQLDigest("default.test_kylin_fact", /*allCol*/ Collections.<TblColRef> emptySet(), /*join*/ null, //
                     groups, /*subqueryJoinParticipants*/ Sets.<TblColRef> newHashSet(), //
+                    /*dynamicGroupByColumns*/ Collections.<TblColRef, TupleExpression> emptyMap(), //
                     /*metricCol*/ Collections.<TblColRef> emptySet(), aggregations, /*aggrSqlCalls*/ Collections.<SQLCall> emptyList(), //
+                    /*dynamicAggregations*/ Collections.<DynamicFunctionDesc> emptyList(), //
+                    /*runtimeDimensionColumns*/ Collections.<TblColRef> emptySet(), //
+                    /*runtimeMetricColumns*/ Collections.<TblColRef> emptySet(), //
                     /*filter col*/ Collections.<TblColRef> emptySet(), filter, null, //
                     /*sortCol*/ new ArrayList<TblColRef>(), new ArrayList<SQLDigest.OrderEnum>(), false, new HashSet<MeasureDesc>());
             iterator = storageEngine.search(context, sqlDigest, mockup.newTupleInfo(groups, aggregations));

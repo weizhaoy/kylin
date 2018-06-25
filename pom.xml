@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>16</version>
+        <version>19</version>
         <relativePath />
         <!-- no parent resolution -->
     </parent>
@@ -30,7 +30,7 @@
     <groupId>org.apache.kylin</groupId>
     <artifactId>kylin</artifactId>
     <packaging>pom</packaging>
-    <version>2.4.0-SNAPSHOT</version>
+    <version>2.5.0-SNAPSHOT</version>
 
     <name>Apache Kylin</name>
     <url>http://kylin.apache.org</url>
@@ -69,8 +69,8 @@
         <avatica.version>1.10.0</avatica.version>
 
         <!-- Hadoop Common deps, keep compatible with hadoop2.version -->
-        <zookeeper.version>3.4.8</zookeeper.version>
-        <curator.version>2.7.1</curator.version>
+        <zookeeper.version>3.4.12</zookeeper.version>
+        <curator.version>2.12.0</curator.version>
         <jsr305.version>3.0.1</jsr305.version>
         <guava.version>14.0</guava.version>
         <jsch.version>0.1.53</jsch.version>
@@ -82,7 +82,7 @@
         <commons-collections.version>3.2.2</commons-collections.version>
 
         <!-- Calcite deps, keep compatible with calcite.version -->
-        <jackson.version>2.6.7.1</jackson.version>
+        <jackson.version>2.9.5</jackson.version>
 
         <!-- Test Dependency versions -->
         <antlr.version>3.4</antlr.version>
@@ -90,7 +90,7 @@
         <mrunit.version>1.1.0</mrunit.version>
         <dbunit.version>2.5.4</dbunit.version>
         <h2.version>1.4.196</h2.version>
-        <jetty.version>9.2.20.v20161216</jetty.version>
+        <jetty.version>9.3.22.v20171030</jetty.version>
         <jamm.version>0.3.1</jamm.version>
         <mockito.version>2.7.14</mockito.version>
         <powermock.version>1.7.0</powermock.version>
@@ -99,6 +99,7 @@
         <commons-lang3.version>3.4</commons-lang3.version>
         <commons-email.version>1.5</commons-email.version>
         <commons-validator.version>1.4.0</commons-validator.version>
+        <commons-compress>1.17</commons-compress>
 
         <!-- Utility -->
         <log4j.version>1.2.17</log4j.version>
@@ -114,6 +115,7 @@
         <tomcat.version>7.0.85</tomcat.version>
         <t-digest.version>3.1</t-digest.version>
         <freemarker.version>2.3.23</freemarker.version>
+        <rocksdb.version>5.9.2</rocksdb.version>
         <!--metric-->
         <dropwizard.version>3.1.2</dropwizard.version>
         <!-- REST Service, ref https://github.com/spring-projects/spring-boot/blob/v1.3.8.RELEASE/spring-boot-dependencies/pom.xml -->
@@ -447,6 +449,12 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-client</artifactId>
+                <version>${curator.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.google.code.findbugs</groupId>
                 <artifactId>jsr305</artifactId>
                 <version>${jsr305.version}</version>
@@ -463,11 +471,6 @@
                 <artifactId>jsch</artifactId>
                 <version>${jsch.version}</version>
                 <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kylin</groupId>
-                <artifactId>kylin-external-htrace</artifactId>
-                <version>2.4.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>commons-cli</groupId>
@@ -597,7 +600,17 @@
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
 
@@ -651,9 +664,19 @@
                 <version>${commons-validator.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.freemarker</groupId>
                 <artifactId>freemarker</artifactId>
                 <version>${freemarker.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.rocksdb</groupId>
+                <artifactId>rocksdbjni</artifactId>
+                <version>${rocksdb.version}</version>
             </dependency>
 
             <!-- Logging -->
@@ -1147,7 +1170,6 @@
     </build>
 
     <modules>
-        <module>external</module>
         <module>atopcalcite</module>
         <module>core-common</module>
         <module>core-metadata</module>

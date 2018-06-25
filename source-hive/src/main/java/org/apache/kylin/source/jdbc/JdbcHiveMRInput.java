@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kylin.common.KylinConfig;
+import org.apache.kylin.common.util.SourceConfigurationUtil;
 import org.apache.kylin.engine.mr.steps.CubingExecutableUtil;
 import org.apache.kylin.job.JoinedFlatTable;
 import org.apache.kylin.job.constant.ExecutableConstants;
@@ -30,6 +31,7 @@ import org.apache.kylin.job.execution.DefaultChainedExecutable;
 import org.apache.kylin.metadata.TableMetadataManager;
 import org.apache.kylin.metadata.model.IJoinedFlatTableDesc;
 import org.apache.kylin.metadata.model.PartitionDesc;
+import org.apache.kylin.metadata.model.SegmentRange;
 import org.apache.kylin.metadata.model.TableExtDesc;
 import org.apache.kylin.metadata.model.TableExtDesc.ColumnStats;
 import org.apache.kylin.metadata.model.TableRef;
@@ -37,6 +39,8 @@ import org.apache.kylin.metadata.model.TblColRef;
 import org.apache.kylin.source.hive.HiveMRInput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
 
 public class JdbcHiveMRInput extends HiveMRInput {
 
@@ -53,7 +57,7 @@ public class JdbcHiveMRInput extends HiveMRInput {
         public BatchCubingInputSide(IJoinedFlatTableDesc flatDesc) {
             super(flatDesc);
         }
-        
+
         private KylinConfig getConfig() {
             return flatDesc.getDataModel().getConfig();
         }
@@ -140,20 +144,19 @@ public class JdbcHiveMRInput extends HiveMRInput {
             KylinConfig config = getConfig();
             PartitionDesc partitionDesc = flatDesc.getDataModel().getPartitionDesc();
             String partCol = null;
-            String partitionString = null;
 
             if (partitionDesc.isPartitioned()) {
                 partCol = partitionDesc.getPartitionDateColumn();//tablename.colname
-                partitionString = partitionDesc.getPartitionConditionBuilder().buildDateRangeCondition(partitionDesc,
-                        flatDesc.getSegment(), flatDesc.getSegRange());
             }
 
             String splitTable;
+            String splitTableAlias;
             String splitColumn;
             String splitDatabase;
             TblColRef splitColRef = determineSplitColumn();
             splitTable = splitColRef.getTableRef().getTableName();
-            splitColumn = splitColRef.getName();
+            splitTableAlias = splitColRef.getTableAlias();
+            splitColumn = splitColRef.getExpressionInSourceDB();
             splitDatabase = splitColRef.getColumnDesc().getTable().getDatabase();
 
             //using sqoop to extract data from jdbc source and dump them to hive
@@ -167,22 +170,29 @@ public class JdbcHiveMRInput extends HiveMRInput {
             String filedDelimiter = config.getJdbcSourceFieldDelimiter();
             int mapperNum = config.getSqoopMapperNum();
 
-            String bquery = String.format("SELECT min(%s), max(%s) FROM %s.%s", splitColumn, splitColumn, splitDatabase,
-                    splitTable);
-            if (partitionString != null) {
-                bquery += " WHERE " + partitionString;
+            String bquery = String.format("SELECT min(%s), max(%s) FROM \"%s\".%s as %s", splitColumn, splitColumn,
+                    splitDatabase, splitTable, splitTableAlias);
+            if (partitionDesc.isPartitioned()) {
+                SegmentRange segRange = flatDesc.getSegRange();
+                if (segRange != null && !segRange.isInfinite()) {
+                    if (partitionDesc.getPartitionDateColumnRef().getTableAlias().equals(splitTableAlias)
+                            && (partitionDesc.getPartitionTimeColumnRef() == null || partitionDesc
+                                    .getPartitionTimeColumnRef().getTableAlias().equals(splitTableAlias))) {
+                        bquery += " WHERE " + partitionDesc.getPartitionConditionBuilder()
+                                .buildDateRangeCondition(partitionDesc, flatDesc.getSegment(), segRange);
+                    }
+                }
             }
 
             //related to "kylin.engine.mr.config-override.mapreduce.job.queuename"
             String queueName = getSqoopJobQueueName(config);
-            String cmd = String.format(
-                    "%s/sqoop import -Dorg.apache.sqoop.splitter.allow_text_splitter=true "
-                            + "-Dmapreduce.job.queuename=%s "
-                            + "--connect \"%s\" --driver %s --username %s --password %s --query \"%s AND \\$CONDITIONS\" "
-                            + "--target-dir %s/%s --split-by %s.%s --boundary-query \"%s\" --null-string '' "
-                            + "--fields-terminated-by '%s' --num-mappers %d",
-                    sqoopHome, queueName, connectionUrl, driverClass, jdbcUser, jdbcPass, selectSql, jobWorkingDir, hiveTable,
-                    splitTable, splitColumn, bquery, filedDelimiter, mapperNum);
+            String cmd = String.format("%s/sqoop import -Dorg.apache.sqoop.splitter.allow_text_splitter=true "
+                    + generateSqoopConfigArgString()
+                    + "--connect \"%s\" --driver %s --username %s --password %s --query \"%s AND \\$CONDITIONS\" "
+                    + "--target-dir %s/%s --split-by %s.%s --boundary-query \"%s\" --null-string '' "
+                    + "--fields-terminated-by '%s' --num-mappers %d", sqoopHome, connectionUrl, driverClass, jdbcUser,
+                    jdbcPass, selectSql, jobWorkingDir, hiveTable, splitTable, splitColumn, bquery, filedDelimiter,
+                    mapperNum);
             logger.debug(String.format("sqoop cmd:%s", cmd));
             CmdStep step = new CmdStep();
             step.setCmd(cmd);
@@ -193,6 +203,20 @@ public class JdbcHiveMRInput extends HiveMRInput {
         @Override
         protected void addStepPhase1_DoMaterializeLookupTable(DefaultChainedExecutable jobFlow) {
             // skip
+        }
+
+        protected String generateSqoopConfigArgString() {
+            KylinConfig kylinConfig = getConfig();
+            Map<String, String> config = Maps.newHashMap();
+            config.put("mapreduce.job.queuename", getSqoopJobQueueName(kylinConfig)); // override job queue from mapreduce config
+            config.putAll(SourceConfigurationUtil.loadSqoopConfiguration());
+            config.putAll(kylinConfig.getSqoopConfigOverride());
+
+            StringBuilder args = new StringBuilder();
+            for (Map.Entry<String, String> entry : config.entrySet()) {
+                args.append(" -D" + entry.getKey() + "=" + entry.getValue() + " ");
+            }
+            return args.toString();
         }
     }
 }

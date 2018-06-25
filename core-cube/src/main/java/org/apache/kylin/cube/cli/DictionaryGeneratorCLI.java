@@ -77,8 +77,11 @@ public class DictionaryGeneratorCLI {
         for (DimensionDesc dim : cubeSeg.getCubeDesc().getDimensions()) {
             TableRef table = dim.getTableRef();
             if (cubeSeg.getModel().isLookupTable(table)) {
-                toSnapshot.add(table.getTableIdentity());
-                toCheckLookup.add(table);
+                // only the snapshot desc is not ext type, need to take snapshot
+                if (!cubeSeg.getCubeDesc().isExtSnapshotTable(table.getTableIdentity())) {
+                    toSnapshot.add(table.getTableIdentity());
+                    toCheckLookup.add(table);
+                }
             }
         }
 
@@ -91,8 +94,12 @@ public class DictionaryGeneratorCLI {
         cubeSeg = updatedCube.getSegmentById(cubeSeg.getUuid());
         for (TableRef lookup : toCheckLookup) {
             logger.info("Checking snapshot of " + lookup);
-            JoinDesc join = cubeSeg.getModel().getJoinsTree().getJoinByPKSide(lookup);
-            cubeMgr.getLookupTable(cubeSeg, join);
+            try {
+                JoinDesc join = cubeSeg.getModel().getJoinsTree().getJoinByPKSide(lookup);
+                cubeMgr.getLookupTable(cubeSeg, join);
+            } catch (Throwable th) {
+                throw new RuntimeException("Checking snapshot of " + lookup + " failed.", th);
+            }
         }
     }
 

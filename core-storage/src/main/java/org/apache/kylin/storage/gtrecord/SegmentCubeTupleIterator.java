@@ -73,7 +73,7 @@ public class SegmentCubeTupleIterator implements ITupleIterator {
         this.tuple = new Tuple(returnTupleInfo);
         this.context = context;
 
-        CuboidToGridTableMapping mapping = cuboid.getCuboidToGridTableMapping();
+        CuboidToGridTableMapping mapping = context.getMapping();
         int[] gtDimsIdx = mapping.getDimIndexes(selectedDimensions);
         int[] gtMetricsIdx = mapping.getMetricsIndexes(selectedMetrics);
         // gtColIdx = gtDimsIdx + gtMetricsIdx
@@ -202,6 +202,7 @@ public class SegmentCubeTupleIterator implements ITupleIterator {
     protected void close(CubeSegmentScanner scanner) {
         try {
             scanner.close();
+            cubeTupleConverter.close();
         } catch (IOException e) {
             logger.error("Exception when close CubeScanner", e);
         }

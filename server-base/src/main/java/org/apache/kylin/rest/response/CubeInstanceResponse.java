@@ -45,7 +45,7 @@ public class CubeInstanceResponse extends CubeInstance {
     @JsonProperty("input_records_count")
     private long inputRecordCnt;
     @JsonProperty("input_records_size")
-    private long inputRecordSizeMB;
+    private long inputRecordSizeBytes;
 
     public CubeInstanceResponse(CubeInstance cube, String project) {
 
@@ -64,6 +64,7 @@ public class CubeInstanceResponse extends CubeInstance {
         setSegments(cube.getSegments());
         setCreateTimeUTC(cube.getCreateTimeUTC());
         setLastModified(cube.getDescriptor().getLastModified());
+        setCuboidLastOptimized(cube.getCuboidLastOptimized());
 
         this.model = cube.getDescriptor().getModelName();
         this.partitionDateStart = cube.getDescriptor().getPartitionDateStart();
@@ -79,7 +80,7 @@ public class CubeInstanceResponse extends CubeInstance {
 
         initSizeKB();
         initInputRecordCount();
-        initInputRecordSizeMB();
+        initInputRecordSizeBytes();
     }
 
     protected void setModel(String model) {
@@ -94,8 +95,8 @@ public class CubeInstanceResponse extends CubeInstance {
         this.inputRecordCnt = super.getInputRecordCount();
     }
 
-    protected void initInputRecordSizeMB() {
-        this.inputRecordSizeMB = super.getInputRecordSizeMB();
+    protected void initInputRecordSizeBytes() {
+        this.inputRecordSizeBytes = super.getInputRecordSizeBytes();
     }
 
 }

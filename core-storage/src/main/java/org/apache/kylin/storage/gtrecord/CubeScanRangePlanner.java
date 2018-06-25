@@ -19,6 +19,7 @@
 package org.apache.kylin.storage.gtrecord;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -29,6 +30,7 @@ import java.util.Set;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.debug.BackdoorToggles;
 import org.apache.kylin.common.util.ByteArray;
+import org.apache.kylin.common.util.ImmutableBitSet;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.cube.CubeSegment;
 import org.apache.kylin.cube.common.FuzzyValueCombination;
@@ -47,7 +49,9 @@ import org.apache.kylin.gridtable.GTScanRequest;
 import org.apache.kylin.gridtable.GTScanRequestBuilder;
 import org.apache.kylin.gridtable.GTUtil;
 import org.apache.kylin.gridtable.IGTComparator;
+import org.apache.kylin.metadata.expression.TupleExpression;
 import org.apache.kylin.metadata.filter.TupleFilter;
+import org.apache.kylin.metadata.model.DynamicFunctionDesc;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.TblColRef;
 import org.apache.kylin.storage.StorageContext;
@@ -71,8 +75,10 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
     protected CubeDesc cubeDesc;
     protected Cuboid cuboid;
 
-    public CubeScanRangePlanner(CubeSegment cubeSegment, Cuboid cuboid, TupleFilter filter, Set<TblColRef> dimensions, Set<TblColRef> groupByDims, //
-                                Collection<FunctionDesc> metrics, TupleFilter havingFilter, StorageContext context) {
+    public CubeScanRangePlanner(CubeSegment cubeSegment, Cuboid cuboid, TupleFilter filter, Set<TblColRef> dimensions, //
+            Set<TblColRef> groupByDims, List<TblColRef> dynGroupsDims, List<TupleExpression> dynGroupExprs, //
+            Collection<FunctionDesc> metrics, List<DynamicFunctionDesc> dynFuncs, //
+            TupleFilter havingFilter, StorageContext context) {
         this.context = context;
 
         this.maxScanRanges = cubeSegment.getConfig().getQueryStorageVisitScanRangeMax();
@@ -83,11 +89,9 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
         this.cubeDesc = cubeSegment.getCubeDesc();
         this.cuboid = cuboid;
 
-        Set<TblColRef> filterDims = Sets.newHashSet();
-        TupleFilter.collectColumns(filter, filterDims);
+        final CuboidToGridTableMapping mapping = context.getMapping();
 
-        this.gtInfo = CubeGridTable.newGTInfo(cuboid, new CubeDimEncMap(cubeSegment));
-        CuboidToGridTableMapping mapping = cuboid.getCuboidToGridTableMapping();
+        this.gtInfo = CubeGridTable.newGTInfo(cuboid, new CubeDimEncMap(cubeSegment), mapping);
 
         IGTComparator comp = gtInfo.getCodeSystem().getComparator();
         //start key GTRecord compare to start key GTRecord
@@ -99,13 +103,39 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
 
         //replace the constant values in filter to dictionary codes
         Set<TblColRef> groupByPushDown = Sets.newHashSet(groupByDims);
-        this.gtFilter = GTUtil.convertFilterColumnsAndConstants(filter, gtInfo, mapping.getCuboidDimensionsInGTOrder(), groupByPushDown);
+        groupByPushDown.addAll(dynGroupsDims);
+        this.gtFilter = GTUtil.convertFilterColumnsAndConstants(filter, gtInfo, mapping.getDim2gt(), groupByPushDown);
         this.havingFilter = havingFilter;
 
         this.gtDimensions = mapping.makeGridTableColumns(dimensions);
         this.gtAggrGroups = mapping.makeGridTableColumns(replaceDerivedColumns(groupByPushDown, cubeSegment.getCubeDesc()));
         this.gtAggrMetrics = mapping.makeGridTableColumns(metrics);
         this.gtAggrFuncs = mapping.makeAggrFuncs(metrics);
+
+        // for dynamic cols, which are as appended columns to GTInfo
+        BitSet tmpGtDynCols = new BitSet();
+
+        this.tupleExpressionMap = Maps.newHashMap();
+        // for dynamic dimensions
+        for (int i = 0; i < dynGroupsDims.size(); i++) {
+            int c = mapping.getIndexOf(dynGroupsDims.get(i));
+            tmpGtDynCols.set(c);
+            TupleExpression tupleExpr = GTUtil.convertFilterColumnsAndConstants(dynGroupExprs.get(i), gtInfo, mapping,
+                    groupByPushDown);
+            this.tupleExpressionMap.put(c, tupleExpr);
+        }
+
+        // for dynamic measures
+        Set<FunctionDesc> tmpRtAggrMetrics = Sets.newHashSet();
+        for (DynamicFunctionDesc dynFunc : dynFuncs) {
+            tmpRtAggrMetrics.addAll(dynFunc.getRuntimeFuncs());
+            int c = mapping.getIndexOf(dynFunc);
+            tmpGtDynCols.set(c);
+            this.tupleExpressionMap.put(c, GTUtil.convertFilterColumnsAndConstants(dynFunc.getTupleExpression(), gtInfo,
+                    mapping, dynFunc.getRuntimeFuncMap(), groupByPushDown));
+        }
+        this.gtDynColumns = new ImmutableBitSet(tmpGtDynCols);
+        this.gtRtAggrMetrics = mapping.makeGridTableColumns(tmpRtAggrMetrics);
 
         if (cubeSegment.getModel().getPartitionDesc().isPartitioned()) {
             int index = mapping.getIndexOf(cubeSegment.getModel().getPartitionDesc().getPartitionDateColumnRef());
@@ -148,10 +178,16 @@ public class CubeScanRangePlanner extends ScanRangePlannerBase {
         GTScanRequest scanRequest;
         List<GTScanRange> scanRanges = this.planScanRanges();
         if (scanRanges != null && scanRanges.size() != 0) {
-            scanRequest = new GTScanRequestBuilder().setInfo(gtInfo).setRanges(scanRanges).setDimensions(gtDimensions).//
-                    setAggrGroupBy(gtAggrGroups).setAggrMetrics(gtAggrMetrics).setAggrMetricsFuncs(gtAggrFuncs).setFilterPushDown(gtFilter).//
-                    setAllowStorageAggregation(context.isNeedStorageAggregation()).setAggCacheMemThreshold(cubeSegment.getConfig().getQueryCoprocessorMemGB()).//
-                    setStoragePushDownLimit(context.getFinalPushDownLimit()).setStorageLimitLevel(context.getStorageLimitLevel()).setHavingFilterPushDown(havingFilter).createGTScanRequest();
+            scanRequest = new GTScanRequestBuilder().setInfo(gtInfo).setRanges(scanRanges).setDimensions(gtDimensions)
+                    .setAggrGroupBy(gtAggrGroups).setAggrMetrics(gtAggrMetrics).setAggrMetricsFuncs(gtAggrFuncs)
+                    .setFilterPushDown(gtFilter)//
+                    .setRtAggrMetrics(gtRtAggrMetrics).setDynamicColumns(gtDynColumns)
+                    .setExprsPushDown(tupleExpressionMap)//
+                    .setAllowStorageAggregation(context.isNeedStorageAggregation())
+                    .setAggCacheMemThreshold(cubeSegment.getConfig().getQueryCoprocessorMemGB())//
+                    .setStoragePushDownLimit(context.getFinalPushDownLimit())
+                    .setStorageLimitLevel(context.getStorageLimitLevel()).setHavingFilterPushDown(havingFilter)
+                    .createGTScanRequest();
         } else {
             scanRequest = null;
         }

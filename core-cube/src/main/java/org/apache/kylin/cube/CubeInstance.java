@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import com.google.common.collect.Maps;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.KylinConfigExt;
 import org.apache.kylin.common.persistence.ResourceStore;
@@ -123,6 +124,9 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
 
     @JsonProperty("cuboid_last_optimized")
     private long cuboidLastOptimized;
+
+    @JsonProperty("snapshots")
+    private Map<String, String> snapshots = Maps.newHashMap();
 
     // cuboid scheduler lazy built
     transient private CuboidScheduler cuboidScheduler;
@@ -235,6 +239,29 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
     @Override
     public String toString() {
         return getCanonicalName();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        CubeInstance other = (CubeInstance) obj;
+        if (name == null) {
+            if (other.name != null)
+                return false;
+        } else if (!name.equals(other.name))
+            return false;
+        return true;
     }
 
     // ============================================================================
@@ -619,7 +646,7 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
     }
 
     // For JSON serialization of this attribute, use CubeInstanceResponse
-    public long getInputRecordSizeMB() {
+    public long getInputRecordSizeBytes() {
         long sizeRecordSize = 0L;
 
         for (CubeSegment cubeSegment : this.getSegments(SegmentStatusEnum.READY)) {
@@ -650,6 +677,20 @@ public class CubeInstance extends RootPersistentEntity implements IRealization, 
     @Override
     public int getEngineType() {
         return getDescriptor().getEngineType();
+    }
+
+    public Map<String, String> getSnapshots() {
+        if (snapshots == null)
+            snapshots = Maps.newHashMap();
+        return snapshots;
+    }
+
+    public String getSnapshotResPath(String tableName) {
+        return getSnapshots().get(tableName);
+    }
+
+    public void putSnapshotResPath(String table, String snapshotResPath) {
+        getSnapshots().put(table, snapshotResPath);
     }
 
     public static CubeInstance getCopyOf(CubeInstance cubeInstance) {

@@ -28,6 +28,8 @@ import org.apache.kylin.common.persistence.RootPersistentEntity;
 import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.common.util.StringSplitter;
 import org.apache.kylin.metadata.MetadataConstants;
+import org.apache.kylin.metadata.project.ProjectInstance;
+import org.apache.kylin.metadata.project.ProjectManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -376,9 +378,15 @@ public class TableDesc extends RootPersistentEntity implements ISourceAware {
         return sourceType;
     }
 
+    // cannot set config in init() due to cascade lock() on projectManager
     @Override
     public KylinConfig getConfig() {
-        return config;
+        if (project == null) {
+            return config;
+        } else {
+            ProjectInstance projInstance = ProjectManager.getInstance(config).getProject(project);
+            return projInstance == null ? config : projInstance.getConfig();
+        }
     }
 
     public void setSourceType(int sourceType) {

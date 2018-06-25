@@ -33,14 +33,19 @@ import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.util.DateFormat;
 import org.apache.kylin.cube.CubeInstance;
+import org.apache.kylin.metadata.expression.ExpressionColCollector;
+import org.apache.kylin.metadata.expression.TupleExpression;
 import org.apache.kylin.metadata.filter.CompareTupleFilter;
 import org.apache.kylin.metadata.filter.TupleFilter;
 import org.apache.kylin.metadata.model.DataModelDesc;
+import org.apache.kylin.metadata.model.DynamicFunctionDesc;
 import org.apache.kylin.metadata.model.FunctionDesc;
 import org.apache.kylin.metadata.model.JoinDesc;
 import org.apache.kylin.metadata.model.JoinsTree;
 import org.apache.kylin.metadata.model.MeasureDesc;
+import org.apache.kylin.metadata.model.TableRef;
 import org.apache.kylin.metadata.model.TblColRef;
+import org.apache.kylin.metadata.project.ProjectManager;
 import org.apache.kylin.metadata.realization.IRealization;
 import org.apache.kylin.metadata.realization.SQLDigest;
 import org.apache.kylin.metadata.realization.SQLDigest.SQLCall;
@@ -51,6 +56,7 @@ import org.apache.kylin.storage.StorageContext;
 import org.apache.kylin.storage.hybrid.HybridInstance;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  */
@@ -151,6 +157,11 @@ public class OLAPContext {
     // rewrite info
     public Map<String, RelDataType> rewriteFields = new HashMap<>();
 
+    // dynamic columns info, note that the name of TblColRef will be the field name
+    public Map<TblColRef, RelDataType> dynamicFields = new HashMap<>();
+
+    public Map<TblColRef, TupleExpression> dynGroupBy = new HashMap<>();
+
     // hive query
     public String sql = "";
 
@@ -163,14 +174,34 @@ public class OLAPContext {
     SQLDigest sqlDigest;
 
     public SQLDigest getSQLDigest() {
-        if (sqlDigest == null)
+        if (sqlDigest == null) {
+            Set<TblColRef> rtDimColumns = new HashSet<>();
+            for (TupleExpression tupleExpr : dynGroupBy.values()) {
+                rtDimColumns.addAll(ExpressionColCollector.collectColumns(tupleExpr));
+            }
+            Set<TblColRef> rtMetricColumns = new HashSet<>();
+            List<DynamicFunctionDesc> dynFuncs = Lists.newLinkedList();
+            for (FunctionDesc functionDesc : aggregations) {
+                if (functionDesc instanceof DynamicFunctionDesc) {
+                    DynamicFunctionDesc dynFunc = (DynamicFunctionDesc) functionDesc;
+                    rtMetricColumns.addAll(dynFunc.getMeasureColumnSet());
+                    rtDimColumns.addAll(dynFunc.getFilterColumnSet());
+                    dynFuncs.add(dynFunc);
+                }
+            }
             sqlDigest = new SQLDigest(firstTableScan.getTableName(), allColumns, joins, // model
-                    groupByColumns, subqueryJoinParticipants, // group by
-                    metricsColumns, aggregations, aggrSqlCalls, // aggregation
+                    groupByColumns, subqueryJoinParticipants, dynGroupBy, // group by
+                    metricsColumns, aggregations, aggrSqlCalls, dynFuncs, // aggregation
+                    rtDimColumns, rtMetricColumns, // runtime related columns
                     filterColumns, filter, havingFilter, // filter
                     sortColumns, sortOrders, limitPrecedesAggr, // sort & limit
                     involvedMeasure);
+        }
         return sqlDigest;
+    }
+
+    public boolean isDynamicColumnEnabled() {
+        return olapSchema != null && olapSchema.getProjectInstance().getConfig().isDynamicColumnEnabled();
     }
 
     public boolean hasPrecalculatedFields() {
@@ -188,6 +219,38 @@ public class OLAPContext {
             }
         }
 
+        return false;
+    }
+
+    public boolean belongToFactTableDims(TblColRef tblColRef) {
+        if (!belongToContextTables(tblColRef)) {
+            return false;
+        }
+        KylinConfig kylinConfig = olapSchema.getConfig();
+        String projectName = olapSchema.getProjectName();
+        String factTableName = firstTableScan.getOlapTable().getTableName();
+        Set<IRealization> realizations = ProjectManager.getInstance(kylinConfig).getRealizationsByTable(projectName,
+                factTableName);
+        for (IRealization real : realizations) {
+            DataModelDesc model = real.getModel();
+            TblColRef.fixUnknownModel(model, tblColRef.getTableRef().getTableIdentity(), tblColRef);
+
+            // cannot be a measure column
+            Set<String> metrics = Sets.newHashSet(model.getMetrics());
+            if (metrics.contains(tblColRef.getIdentity())) {
+                tblColRef.unfixTableRef();
+                return false;
+            }
+
+            // must belong to a fact table
+            for (TableRef factTable : model.getFactTables()) {
+                if (factTable.getColumns().contains(tblColRef)) {
+                    tblColRef.unfixTableRef();
+                    return true;
+                }
+            }
+            tblColRef.unfixTableRef();
+        }
         return false;
     }
 
